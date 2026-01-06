@@ -20,6 +20,11 @@
 #define VK_LAYER_EXPORT extern "C"
 #endif
 
+#define VK_DRIVER_ID_QUALCOMM_PROPRIETARY 8                                  
+#define VK_DRIVER_ID_ARM_PROPRIETARY 9                                       
+#define VK_DRIVER_ID_MESA_TURNIP 18                                         
+#define VK_DRIVER_ID_SAMSUNG_PROPRIETARY 21
+
 template <typename T>
 void* GetKey(T item) {
     return *(void**) item;
@@ -31,6 +36,10 @@ typedef std::lock_guard<std::mutex> scoped_lock;
 struct device {
 	VkDevice handle;
 	VkPhysicalDevice physical;
+	VkPhysicalDeviceProperties2 props2;
+	VkPhysicalDeviceFeatures features;
+	VkPhysicalDeviceDriverProperties driverProps;
+	bool compute_bcn_auto;
 	VkLayerDispatchTable table;
 	VkPipeline s3tcPipeline;
 	VkPipeline rgtcPipeline;

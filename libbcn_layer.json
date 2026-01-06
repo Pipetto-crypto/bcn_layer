@@ -12,10 +12,10 @@
       "vkGetDeviceProcAddr": "BCnLayer_GetDeviceProcAddr"
     },
     "enable_environment": {
-      "ENABLE_BCN_LAYER": "1"
+      "ENABLE_BCN_COMPUTE": "1"
     },
     "disable_environment": {
-      "DISABLE_BCN_LAYER": "1"
+      "DISABLE_BCN_COMPUTE": "1"
     }
   }
 }

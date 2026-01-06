@@ -91,7 +91,7 @@ BCnLayer_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 
 	table = dev->table;
 	
-	if (!img || !buf || !is_supported_bcn_format(format)) {
+	if (!img || !buf || !is_supported_bcn_format(dev, format)) {
 		table.CmdCopyBufferToImage(commandBuffer,
 			srcBuffer, dstImage, dstImageLayout, regionCount, pRegions);
 		return;

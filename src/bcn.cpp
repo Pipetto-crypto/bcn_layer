@@ -81,7 +81,21 @@ VkFormat get_format_for_bcn(VkFormat format) {
 	}
 }
 
-bool is_supported_bcn_format(VkFormat format) {
+bool is_supported_bcn_format(struct device *device, VkFormat format) {
+    VkPhysicalDeviceProperties2 props2 = device->props2;
+    VkPhysicalDeviceDriverProperties driverProps = device->driverProps;
+
+    if (device->compute_bcn_auto && ((driverProps.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY && props2.properties.driverVersion > VK_MAKE_VERSION(512, 502, 0)) ||
+                                               driverProps.driverID == VK_DRIVER_ID_MESA_TURNIP)) 
+    {
+    	return false;
+    }
+    
+    if (is_s3tc(format) && device->compute_bcn_auto && driverProps.driverID == VK_DRIVER_ID_SAMSUNG_PROPRIETARY)
+    {
+    	return false;
+    }
+    
 	return is_rgtc(format) || is_s3tc(format) || is_bc6(format) || is_bc7(format);
 }
 

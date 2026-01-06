@@ -18,7 +18,7 @@ bool is_s3tc(VkFormat);
 bool is_rgtc(VkFormat);
 bool is_bc6(VkFormat);
 bool is_bc7(VkFormat);
-bool is_supported_bcn_format(VkFormat);
+bool is_supported_bcn_format(struct device *, VkFormat);
 VkFormat get_format_for_bcn(VkFormat);
 VkResult create_bcn_compute_pipelines(struct device *dev);
 VkResult decompress_bcn_compute(struct device *dev,
