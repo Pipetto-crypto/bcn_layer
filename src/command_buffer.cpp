@@ -71,32 +71,39 @@ BCnLayer_FreeCommandBuffers(VkDevice device,
 	}
 }
 
-VK_LAYER_EXPORT void VKAPI_CALL
-BCnLayer_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-						      VkBuffer srcBuffer,
-						      VkImage dstImage,
-						      VkImageLayout dstImageLayout,
-						      uint32_t regionCount,
-						      const VkBufferImageCopy *pRegions)
+static struct device *
+device_for_command_buffer(struct command_buffer *cb, VkCommandBuffer commandBuffer)
 {
-	VkLayerDispatchTable table;
-	VkResult result;
+	if (cb)
+		return cb->device;
 
+	return get_device(reinterpret_cast<VkDevice>(commandBuffer));
+}
+
+static bool
+bcn_copy_buffer_to_image(VkCommandBuffer commandBuffer,
+						 VkBuffer srcBuffer,
+						 VkImage dstImage,
+						 VkImageLayout dstImageLayout,
+						 uint32_t regionCount,
+						 const VkBufferImageCopy *pRegions)
+{
 	struct command_buffer *cb = get_command_buffer(commandBuffer);
-	struct device *dev = cb->device;
 	struct image *img = find_image(dstImage);
 	struct buffer *buf = find_buffer(srcBuffer);
-	VkFormat format = img->format;
-	int texel_size = is_bc6(format) ? 8 : 4;
 
-	table = dev->table;
-	
-	if (!img || !buf || !is_supported_bcn_format(dev, format)) {
-		table.CmdCopyBufferToImage(commandBuffer,
-			srcBuffer, dstImage, dstImageLayout, regionCount, pRegions);
-		return;
-	}
-	
+	if (!cb || !img || !buf)
+		return false;
+
+	struct device *dev = cb->device;
+	VkFormat format = img->format;
+
+	if (!is_supported_bcn_format(dev, format))
+		return false;
+
+	int texel_size = is_bc6(format) ? 8 : 4;
+	VkLayerDispatchTable table = dev->table;
+
 	for (uint32_t i = 0; i < regionCount; i++) {
 		VkBufferImageCopy copy_region = pRegions[i];
 
@@ -137,4 +144,55 @@ BCnLayer_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 			cb->fence->staging_buffers.push_back(std::move(staging_buf));
 		}
 	}
+
+	return true;
+}
+
+VK_LAYER_EXPORT void VKAPI_CALL
+BCnLayer_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
+						      VkBuffer srcBuffer,
+						      VkImage dstImage,
+						      VkImageLayout dstImageLayout,
+						      uint32_t regionCount,
+						      const VkBufferImageCopy *pRegions)
+{
+	if (bcn_copy_buffer_to_image(commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions))
+		return;
+
+	struct device *dev = device_for_command_buffer(get_command_buffer(commandBuffer), commandBuffer);
+	if (!dev)
+		return;
+
+	dev->table.CmdCopyBufferToImage(commandBuffer,
+		srcBuffer, dstImage, dstImageLayout, regionCount, pRegions);
+}
+
+VK_LAYER_EXPORT void VKAPI_CALL
+BCnLayer_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
+							   const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
+{
+	std::vector<VkBufferImageCopy> regions(pCopyBufferToImageInfo->regionCount);
+
+	for (uint32_t i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
+		const VkBufferImageCopy2 &r = pCopyBufferToImageInfo->pRegions[i];
+		regions[i] = {
+			.bufferOffset = r.bufferOffset,
+			.bufferRowLength = r.bufferRowLength,
+			.bufferImageHeight = r.bufferImageHeight,
+			.imageSubresource = r.imageSubresource,
+			.imageOffset = r.imageOffset,
+			.imageExtent = r.imageExtent
+		};
+	}
+
+	if (bcn_copy_buffer_to_image(commandBuffer,
+			pCopyBufferToImageInfo->srcBuffer, pCopyBufferToImageInfo->dstImage,
+			pCopyBufferToImageInfo->dstImageLayout, pCopyBufferToImageInfo->regionCount, regions.data()))
+		return;
+
+	struct device *dev = device_for_command_buffer(get_command_buffer(commandBuffer), commandBuffer);
+	if (!dev)
+		return;
+
+	dev->table.CmdCopyBufferToImage2(commandBuffer, pCopyBufferToImageInfo);
 }

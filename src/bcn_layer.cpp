@@ -450,6 +450,9 @@ BCnLayer_CreateDevice(VkPhysicalDevice physicalDevice,
     table.CmdBindDescriptorSets = (PFN_vkCmdBindDescriptorSets)gdpa(*pDevice, "vkCmdBindDescriptorSets");
     table.CmdDispatch = (PFN_vkCmdDispatch)gdpa(*pDevice, "vkCmdDispatch");
     table.CmdCopyBufferToImage = (PFN_vkCmdCopyBufferToImage)gdpa(*pDevice, "vkCmdCopyBufferToImage");
+    table.CmdCopyBufferToImage2 = (PFN_vkCmdCopyBufferToImage2)gdpa(*pDevice, "vkCmdCopyBufferToImage2");
+    if (!table.CmdCopyBufferToImage2)
+        table.CmdCopyBufferToImage2 = (PFN_vkCmdCopyBufferToImage2)gdpa(*pDevice, "vkCmdCopyBufferToImage2KHR");
     table.CmdPipelineBarrier = (PFN_vkCmdPipelineBarrier)gdpa(*pDevice, "vkCmdPipelineBarrier");
     table.DestroyDescriptorPool = (PFN_vkDestroyDescriptorPool)gdpa(*pDevice, "vkDestroyDescriptorPool");
     table.DestroyDescriptorSetLayout = (PFN_vkDestroyDescriptorSetLayout)gdpa(*pDevice, "vkDestroyDescriptorSetLayout");
@@ -549,6 +552,18 @@ BCnLayer_GetDeviceProcAddr(VkDevice device,
 	GETPROCADDR(CreateFence);
 	GETPROCADDR(DestroyFence);
 	GETPROCADDR(WaitForFences);
+
+	if (!strcmp(pName, "vkCmdCopyBufferToImage2") || !strcmp(pName, "vkCmdCopyBufferToImage2KHR")) {
+		scoped_lock l(global_lock);
+		struct device *dev = get_device(device);
+		if (!dev)
+			return NULL;
+
+		if (dev->table.CmdCopyBufferToImage2)
+			return (PFN_vkVoidFunction)&BCnLayer_CmdCopyBufferToImage2;
+
+		return dev->table.GetDeviceProcAddr(device, pName);
+	}
 
 	{
 		scoped_lock l(global_lock);
